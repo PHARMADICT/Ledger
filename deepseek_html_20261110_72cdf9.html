@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>VYSAKH SALES TRACKER</title>
+<style>
+    :root {
+        --bg: #f2f5fa;
+        --navy: #0a1931;
+        --navy-light: #162a4a;
+        --blue: #007aff;
+        --green: #20a766;
+        --red: #ff3b30;
+        --amber: #f59e0b;
+        --card: #ffffff;
+        --border: #e5ebf3;
+        --text: #1c2738;
+        --muted: #7f8ea3;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif; -webkit-tap-highlight-color:transparent; }
+    body { background:var(--bg); min-height:100vh; padding:calc(0.75rem + env(safe-area-inset-top)) 0.65rem calc(10rem + env(safe-area-inset-bottom)); display:flex; flex-direction:column; align-items:center; color:var(--text); animation: fadeInBody 0.3s ease; }
+    @keyframes fadeInBody { from{opacity:0;} to{opacity:1;} }
+    .app { max-width:560px; width:100%; position:relative; }
+    button, input, select, textarea { touch-action: manipulation; }
+
+    /* SYNC INDICATOR */
+    .sync-dot { display:inline-flex; align-items:center; gap:0.3rem; font-size:0.6rem; font-weight:800; padding:0.18rem 0.5rem; border-radius:20px; background:rgba(255,255,255,0.14); color:#a3b8d1; letter-spacing:0.3px; }
+    .sync-dot .d { width:7px; height:7px; border-radius:50%; background:#839bb9; transition:background 0.3s; }
+    .sync-dot.synced .d { background:#4ade80; box-shadow:0 0 6px #4ade80; }
+    .sync-dot.syncing .d { background:#fbbf24; animation:pulseDot 0.8s infinite; }
+    .sync-dot.offline .d { background:#ff3b30; }
+    @keyframes pulseDot { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+
+    /* MODALS */
+    .modal-overlay { position:fixed; inset:0; background:rgba(10,25,49,0.7); backdrop-filter:blur(6px); z-index:1500; display:none; align-items:center; justify-content:center; padding:1rem; }
+    .modal-overlay.active { display:flex; animation: fadeInBody 0.2s ease; }
+    .modal-card { background:white; width:100%; max-width:440px; border-radius:1.2rem; padding:1.2rem; box-shadow:0 12px 32px rgba(10,25,49,0.25); border:1px solid var(--border); max-height:90vh; overflow-y:auto; }
+    .modal-title { font-size:1rem; font-weight:800; color:var(--navy); margin-bottom:0.8rem; display:flex; justify-content:space-between; align-items:center; }
+    .modal-group { margin-bottom:0.7rem; }
+    .modal-group label { font-size:0.72rem; font-weight:700; color:#43648b; display:block; margin-bottom:0.25rem; }
+    .modal-group input, .modal-group textarea, .modal-group select { width:100%; border:1.5px solid #d8e2ef; border-radius:0.75rem; padding:0.5rem 0.75rem; font-size:16px!important; color:var(--text); background:#f9fbfe; outline:none; font-weight:600; }
+    .modal-group input:focus, .modal-group textarea:focus, .modal-group select:focus { border-color:var(--blue); background:white; box-shadow:0 0 0 3px rgba(0,122,255,0.12); }
+
+    /* LOCATION SELECTOR BAR */
+    .loc-bar { display:flex; gap:0.4rem; background:white; padding:0.35rem; border-radius:0.8rem; border:1px solid var(--border); margin-bottom:0.8rem; }
+    .loc-tab { flex:1; padding:0.5rem 0.1rem; text-align:center; font-size:0.65rem; font-weight:900; color:#43648b; border-radius:0.5rem; cursor:pointer; transition:all 0.15s; letter-spacing:0.3px; }
+    .loc-tab.active { background:var(--navy); color:white; box-shadow:0 3px 8px rgba(10,25,49,0.2); }
+
+    /* TOPBAR */
+    .topbar { background:linear-gradient(135deg,var(--navy),var(--navy-light)); color:white; border-radius:1.4rem; padding:0.85rem 1rem; margin-bottom:0.8rem; box-shadow:0 8px 20px rgba(10,25,49,0.22); }
+    .topbar-row1 { display:flex; align-items:center; justify-content:space-between; margin-bottom:0.65rem; gap:0.5rem; }
+    .topbar h1 { font-size:1.1rem; font-weight:800; letter-spacing:-0.3px; display:flex; align-items:center; gap:0.4rem; }
+    .topbar h1 span { background:var(--green); font-size:0.62rem; padding:0.18rem 0.55rem; border-radius:20px; letter-spacing:0.5px; }
+    .topbar-right { display:flex; align-items:center; gap:0.4rem; }
+    .icon-btn { background:rgba(255,255,255,0.14); border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center; }
+
+    .date-bar { display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.12); border-radius:0.95rem; padding:0.35rem 0.5rem; gap:0.35rem; }
+    .date-nav-btn { background:rgba(255,255,255,0.16); border:none; color:white; width:30px; height:30px; border-radius:0.65rem; font-size:0.8rem; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .date-picker-wrap { flex:1; display:flex; align-items:center; justify-content:center; gap:0.35rem; position:relative; }
+    .date-input { background:transparent; border:none; color:white; font-size:0.82rem; font-weight:700; text-align:center; cursor:pointer; outline:none; color-scheme:dark; }
+    .today-jump-btn { background:var(--green); color:white; border:none; padding:0.28rem 0.6rem; border-radius:0.6rem; font-size:0.68rem; font-weight:800; cursor:pointer; display:none; }
+    .today-jump-btn.show { display:inline-block; }
+
+    /* WIDGET TILES */
+    .dashboard-tiles { display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:0.4rem; margin-bottom:0.4rem; scrollbar-width:none; }
+    .dashboard-tiles::-webkit-scrollbar { display:none; }
+    .dash-tile { background:white; border:1.5px solid var(--border); border-radius:1rem; padding:0.45rem 0.55rem; min-width:96px; max-width:108px; display:flex; flex-direction:column; align-items:center; text-align:center; cursor:pointer; flex-shrink:0; box-shadow:0 3px 10px rgba(10,25,49,0.04); animation: tileIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    @keyframes tileIn { from{opacity:0; transform:scale(0.85) translateY(8px);} to{opacity:1; transform:scale(1) translateY(0);} }
+    .dash-tile:active { transform:scale(0.92); background:#f4f8fc; border-color:var(--blue); }
+    .dash-tile-img { width:38px; height:38px; border-radius:0.7rem; background:#edf3fc; display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:0.25rem; font-size:1.3rem; border:1px solid rgba(0,0,0,0.03); }
+    .dash-tile-img img { width:100%; height:100%; object-fit:cover; }
+    .dash-tile-name { font-size:0.72rem; font-weight:800; color:var(--text); line-height:1.15; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; width:100%; }
+    .dash-tile-placeholder-text { font-size:1rem; font-weight:900; color:#839bb9; }
+    .pimg-placeholder-text { font-size:1.4rem; font-weight:900; color:#839bb9; }
+
+    /* BOTTOM NAV - GLASSMORPHISM */
+    .bottom-nav-bar { position:fixed; bottom:calc(0.6rem + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); width:calc(100% - 1.3rem); max-width:520px; background:rgba(10,25,49,0.78); backdrop-filter:blur(18px) saturate(160%); -webkit-backdrop-filter:blur(18px) saturate(160%); border-radius:1.2rem; padding:0.35rem; display:flex; gap:0.3rem; z-index:60; box-shadow:0 8px 24px rgba(10,25,49,0.35); border:1px solid rgba(255,255,255,0.16); animation: navRise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    @keyframes navRise { from{opacity:0; transform:translateX(-50%) translateY(20px);} to{opacity:1; transform:translateX(-50%) translateY(0);} }
+    .nav-tab-btn { flex:1; padding:0.55rem 0.2rem; border:none; background:transparent; border-radius:0.9rem; font-size:0.7rem; font-weight:700; color:#a3b8d1; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:0.3rem; transition:all 0.2s ease; }
+    .nav-tab-btn.active { background:var(--blue); color:white; box-shadow:0 2px 10px rgba(0,122,255,0.4); transform:scale(1.03); }
+
+    .panel { display:none; }
+    .panel.active { display:block; animation:fadeInPanel 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes fadeInPanel { from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+
+    .card { background:var(--card); border-radius:1.4rem; padding:0.95rem; box-shadow:0 6px 18px rgba(10,25,49,0.06); margin-bottom:0.8rem; border:1px solid var(--border); }
+
+    /* BRAND CHIPS */
+    .brand-chips { display:flex; gap:0.35rem; overflow-x:auto; padding-bottom:0.4rem; margin-bottom:0.5rem; scrollbar-width:none; }
+    .brand-chips::-webkit-scrollbar { display:none; }
+    .brand-chip { flex-shrink:0; padding:0.35rem 0.7rem; border-radius:20px; border:1.5px solid #d5e0ee; background:white; font-size:0.65rem; font-weight:800; color:#43648b; cursor:pointer; white-space:nowrap; }
+    .brand-chip.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+    /* SEARCH */
+    .search-wrap { display:flex; gap:0.4rem; margin-bottom:0.75rem; }
+    .search-wrap input[type=text] { flex:1; border:1.5px solid #d5e0ee; border-radius:0.85rem; padding:0.55rem 0.85rem; font-size:16px!important; color:var(--text); background:#f8fafd; font-weight:700; }
+    .filter-toggle { border:1.5px solid #d5e0ee; background:white; border-radius:0.85rem; padding:0.55rem 0.75rem; font-size:0.72rem; font-weight:800; color:#43648b; cursor:pointer; white-space:nowrap; }
+    .filter-toggle.on { background:var(--green); color:white; border-color:var(--green); }
+
+    /* PRODUCT GRID - 4 COLUMNS */
+    .grid-products { display:grid; grid-template-columns:repeat(4, 1fr); gap:0.4rem; }
+    .product-tile { background:#f9fbff; border:1.5px solid #e1eaf5; border-radius:0.9rem; padding:0.35rem; cursor:pointer; transition:transform 0.12s, background 0.15s; display:flex; flex-direction:column; align-items:center; text-align:center; position:relative; user-select:none; overflow:hidden; box-shadow:0 2px 6px rgba(10,25,49,0.04); animation: tileIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .product-tile.promo { border-color:#74d3a3; background:#f4fbf7; }
+    .product-tile:active { transform:scale(0.90); background:#d8e8fc; border-color:var(--blue); }
+    .pimg-box { width:100%; aspect-ratio:1/1; border-radius:0.6rem; background:linear-gradient(135deg,#e8f0fe,#f3f7fc); display:flex; align-items:center; justify-content:center; overflow:hidden; margin-bottom:0.25rem; position:relative; border:1px solid rgba(0,0,0,0.03); }
+    .pimg-box img { width:100%; height:100%; object-fit:cover; display:block; }
+    .product-tile .pname { font-size:0.6rem; font-weight:800; color:var(--text); line-height:1.15; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:1.4rem; margin-bottom:0.15rem; }
+    .product-tile .pprice { font-size:0.58rem; font-weight:900; color:var(--blue); background:rgba(0,122,255,0.09); padding:0.1rem 0.3rem; border-radius:8px; }
+    .product-tile .pbadge { position:absolute; top:0.25rem; right:0.25rem; font-size:0.42rem; font-weight:800; background:var(--green); color:white; padding:0.1rem 0.28rem; border-radius:20px; z-index:2; }
+    .product-tile .qty-tap-badge { position:absolute; top:0.25rem; left:0.25rem; font-size:0.55rem; font-weight:900; background:var(--navy); color:white; min-width:18px; height:18px; padding:0 4px; border-radius:9px; display:flex; align-items:center; justify-content:center; z-index:2; }
+
+    /* TABLE */
+    .table-container { width:100%; overflow-x:auto; margin-top:0.4rem; }
+    .sales-table { width:100%; border-collapse:collapse; font-size:0.72rem; text-align:left; }
+    .sales-table th { background:#eef3fa; color:var(--navy); padding:0.5rem 0.4rem; font-weight:900; white-space:nowrap; border-bottom:2px solid #d5e0ee; }
+    .sales-table td { padding:0.5rem 0.4rem; border-bottom:1px solid #eef2f8; color:var(--text); vertical-align:middle; font-weight:700; }
+    .sales-table tr:hover { background:#f7faff; }
+    .empty-msg { text-align:center; color:var(--muted); font-size:0.8rem; font-weight:700; padding:1.1rem 0; }
+
+    /* SUMMARY */
+    .sticky-summary { position:fixed; bottom:calc(4.5rem + env(safe-area-inset-bottom)); left:0; right:0; background:rgba(10,25,49,0.96); backdrop-filter:blur(12px); color:white; padding:0.6rem 1rem calc(0.5rem + env(safe-area-inset-bottom)); box-shadow:0 -6px 22px rgba(10,25,49,0.3); z-index:40; display:none; animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes slideUp { from{transform:translateY(100%);} to{transform:translateY(0);} }
+    .sticky-summary.show { display:block; }
+    .sticky-inner { max-width:520px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; }
+    .sticky-summary .lbl, .summary-box .lbl { font-size:0.64rem; opacity:0.75; font-weight:700; }
+    .sticky-summary .val, .summary-box .val { font-size:1.05rem; font-weight:900; }
+    .sticky-summary .commission, .summary-box .commission { font-size:0.68rem; background:var(--green); padding:0.22rem 0.65rem; border-radius:20px; font-weight:900; }
+    .summary-box { background:linear-gradient(135deg,var(--navy),var(--navy-light)); color:white; border-radius:1.15rem; padding:0.85rem 1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; }
+
+    /* BUTTONS */
+    .btn { border:none; border-radius:0.95rem; padding:0.7rem 1rem; font-size:0.8rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:0.4rem; transition:transform 0.12s; }
+    .btn:active { transform:scale(0.96); }
+    .btn-primary { background:var(--blue); color:white; }
+    .btn-green { background:var(--green); color:white; }
+    .btn-outline { background:white; color:var(--text); border:1.5px solid #d0dae8; }
+    .btn-danger { background:var(--red); color:white; }
+    .btn-wa { background:#25d366; color:white; }
+    .btn-amber { background:var(--amber); color:white; }
+    .btn-sm { padding:0.35rem 0.6rem; font-size:0.68rem; border-radius:0.65rem; }
+    .btn-block { width:100%; }
+
+    /* SETTINGS */
+    .add-product-card { background:#f4f8fc; border:1.5px dashed var(--blue); border-radius:1rem; padding:0.85rem; margin-bottom:1rem; }
+    .setting-row { display:flex; align-items:center; gap:0.42rem; padding:0.6rem 0; border-bottom:1px solid #eef2f8; flex-wrap:wrap; }
+    .setting-img-btn { width:44px; height:44px; border-radius:0.75rem; border:1.5px dashed #b0c4de; background:#f5f9ff; cursor:pointer; display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; position:relative; font-size:0.85rem; font-weight:900; color:#839bb9; }
+    .setting-img-btn img { width:100%; height:100%; object-fit:cover; }
+    .setting-img-btn span.edit-lbl { font-size:0.48rem; position:absolute; bottom:0; left:0; right:0; background:rgba(10,25,49,0.72); color:white; text-align:center; padding:1px 0; font-weight:800; }
+    .setting-row input[type=text], .setting-row input[type=number] { border:1.5px solid #d8e2ef; border-radius:0.6rem; padding:0.42rem 0.55rem; font-size:16px!important; color:var(--text); background:#f9fbfe; font-weight:700; }
+    .setting-row .inp-name { flex:2; min-width:110px; }
+    .setting-row .inp-price { width:70px; }
+    .setting-row .inp-pct { width:72px; }
+    .chk-label { display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; font-weight:800; color:#43648b; white-space:nowrap; cursor:pointer; }
+
+    /* LEDGER PAGE 2 - FULL INLINE EDIT */
+    .ledger-date-card { background:white; border:1.5px solid var(--border); border-radius:1.1rem; margin-bottom:0.7rem; overflow:hidden; animation:fadeInPanel 0.25s ease; }
+    .ledger-head { background:linear-gradient(135deg,#f4f8fc,#eef3fa); padding:0.65rem 0.75rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+    .ledger-head .date-inp { border:1.5px solid #cbd9eb; border-radius:0.55rem; padding:0.32rem 0.5rem; font-size:16px!important; font-weight:800; color:var(--navy); background:white; }
+    .ledger-head .store-inp { border:1.5px solid #cbd9eb; border-radius:0.55rem; padding:0.32rem 0.5rem; font-size:16px!important; font-weight:800; color:var(--blue); background:white; flex:1; min-width:120px; }
+    .ledger-head .status-pill { font-size:0.6rem; font-weight:900; padding:0.2rem 0.55rem; border-radius:20px; cursor:pointer; border:1.5px solid transparent; }
+    .status-pill.rep-off { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+    .status-pill.rep-on { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+    .status-pill.pay-off { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .status-pill.pay-on { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+    .ledger-body { padding:0.5rem 0.75rem 0.75rem; }
+    .ledger-row { display:grid; grid-template-columns: 1.4fr 0.5fr 0.6fr 0.6fr auto; gap:0.35rem; align-items:center; padding:0.4rem 0; border-bottom:1px dashed #e2eaf5; font-size:0.72rem; }
+    .ledger-row:last-child { border-bottom:none; }
+    .ledger-row .lr-name { font-weight:800; color:var(--text); }
+    .ledger-row .lr-name .brand-tag { font-size:0.55rem; color:var(--blue); font-weight:800; }
+    .ledger-row input { border:1.5px solid #d8e2ef; border-radius:0.5rem; padding:0.28rem 0.4rem; font-size:16px!important; font-weight:800; width:100%; background:#f9fbfe; color:var(--text); }
+    .ledger-row input:focus { border-color:var(--blue); background:white; outline:none; }
+    .ledger-row .lr-total { font-weight:900; color:var(--blue); text-align:right; white-space:nowrap; }
+    .ledger-row .lr-del { background:var(--red); color:white; border:none; border-radius:0.45rem; width:24px; height:24px; font-size:0.7rem; cursor:pointer; }
+    .ledger-foot { display:flex; justify-content:space-between; align-items:center; padding-top:0.55rem; margin-top:0.4rem; border-top:2px solid #e9edf4; flex-wrap:wrap; gap:0.4rem; }
+    .ledger-foot .lf-stat { font-size:0.68rem; font-weight:800; color:#43648b; }
+    .ledger-foot .lf-stat strong { color:var(--navy); font-size:0.82rem; }
+    .ledger-foot .lf-amt { color:var(--green); }
+    .ledger-actions { display:flex; gap:0.35rem; flex-wrap:wrap; margin-top:0.4rem; }
+
+    /* RECONFIRM BANNER */
+    .reconfirm-bar { position:fixed; bottom:calc(9.2rem + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(90px); width:calc(100% - 1.3rem); max-width:520px; background:rgba(10,25,49,0.97); backdrop-filter:blur(14px); color:white; border-radius:1rem; padding:0.55rem 0.7rem; display:flex; align-items:center; gap:0.4rem; z-index:1200; box-shadow:0 10px 30px rgba(10,25,49,0.4); opacity:0; pointer-events:none; transition:transform 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.3s; border:1px solid rgba(255,255,255,0.14); flex-wrap:wrap; }
+    .reconfirm-bar.show { transform:translateX(-50%) translateY(0); opacity:1; pointer-events:auto; }
+    .reconfirm-bar .rb-msg { flex:1; font-size:0.7rem; font-weight:800; min-width:100px; line-height:1.25; }
+    .reconfirm-bar .rb-msg .rb-timer { display:block; height:3px; background:rgba(255,255,255,0.15); border-radius:2px; margin-top:0.3rem; overflow:hidden; }
+    .reconfirm-bar .rb-msg .rb-timer i { display:block; height:100%; background:var(--green); width:100%; animation:rbDrain 4.5s linear forwards; }
+    @keyframes rbDrain { from{width:100%;} to{width:0%;} }
+    .reconfirm-bar button { border:none; border-radius:0.6rem; padding:0.4rem 0.55rem; font-size:0.68rem; font-weight:900; cursor:pointer; background:rgba(255,255,255,0.14); color:white; white-space:nowrap; }
+    .reconfirm-bar button.rb-undo { background:var(--blue); }
+    .reconfirm-bar button.rb-ok { background:var(--green); }
+    .reconfirm-bar button.rb-edit { background:var(--amber); }
+    .reconfirm-bar button:active { transform:scale(0.92); }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:calc(7rem + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%) translateY(80px); background:var(--navy); color:white; padding:0.65rem 1.25rem; border-radius:30px; font-size:0.78rem; font-weight:800; box-shadow:0 8px 24px rgba(10,25,49,0.32); transition:transform 0.25s, opacity 0.25s; z-index:1999; opacity:0; pointer-events:none; display:flex; align-items:center; gap:0.6rem; white-space:nowrap; max-width:92vw; }
+    .toast.show { transform:translateX(-50%) translateY(0); opacity:1; pointer-events:auto; }
+
+    .small-note { font-size:0.68rem; font-weight:700; color:var(--muted); margin-top:0.4rem; text-align:center; }
+
+    /* IMPORT PASTE */
+    .paste-area { width:100%; border:1.5px solid #d8e2ef; border-radius:0.75rem; padding:0.6rem; font-size:0.72rem; font-family:ui-monospace,monospace; min-height:90px; background:#f9fbfe; color:var(--text); font-weight:600; }
+
+    /* LEDGER SEARCH */
+    .ledger-search { width:100%; border:1.5px solid #d5e0ee; border-radius:0.85rem; padding:0.6rem 0.85rem; font-size:16px!important; font-weight:700; margin-bottom:0.6rem; background:#f8fafd; }
+
+    @media (max-width:600px){
+     .table-container{overflow-x:visible}.sales-table thead{display:none}
+     .sales-table tr.table-row-item{display:grid;grid-template-columns:1fr auto;grid-template-areas:"desc total" "meta qty" "rem rem";gap:.15rem .6rem;padding:.65rem .1rem;border-bottom:1px solid #eef2f8}
+     .sales-table tr.table-row-item td{display:block;border:0;padding:0}
+     td:nth-child(3){grid-area:desc}td:nth-child(6){grid-area:total;text-align:right}td:nth-child(1){grid-area:meta}td:nth-child(4){grid-area:qty;text-align:right}td:nth-child(7){grid-area:rem}
+     td:nth-child(2),td:nth-child(5){display:none!important}
+    }
+    @media (max-width:400px){ .grid-products{grid-template-columns:repeat(3,1fr);} }
+</style>
+</head>
+<body>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="quickModal">
+    <div class="modal-card">
+        <div class="modal-title">
+            <span id="modalProdTitle">Edit Entry</span>
+            <button class="btn btn-sm btn-outline" id="closeModalBtn" style="padding:0.2rem 0.5rem;">✕</button>
+        </div>
+        <div class="edit-only" style="display:none;background:#eef3fa;border-radius:0.6rem;padding:0.4rem 0.6rem;font-size:0.75rem;font-weight:900;color:var(--navy);margin-bottom:0.7rem;text-align:center;">
+            📅 DATE: <span id="modalActiveDateDisplay" style="color:var(--blue);"></span>
+        </div>
+        <div class="modal-group"><label>Item name</label><input type="text" id="modalNameInput"></div>
+        <div class="edit-only" style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+            <div class="modal-group"><label>Date</label><input type="date" id="modalDateInput"></div>
+            <div class="modal-group"><label>Time</label><input type="time" id="modalTimeInput"></div>
+        </div>
+        <div class="modal-group">
+            <label>Location</label>
+            <div class="loc-bar" id="modalLocBar" style="margin-bottom:0;">
+                <div class="loc-tab active" data-loc="DUBAI MALL">DUBAI MALL</div>
+                <div class="loc-tab" data-loc="RESIDENCE">RESIDENCE</div>
+                <div class="loc-tab" data-loc="IBN">IBN</div>
+            </div>
+        </div>
+        <label class="chk-label" id="modalCatRow" style="display:none;margin:0.2rem 0 0.7rem;"><input type="checkbox" id="modalCatChk" style="width:18px;height:18px;"> <span id="modalCatTxt"></span></label>
+        <div class="modal-group edit-only">
+            <label>Invoice No (INV)</label>
+            <input type="text" id="modalInvInput" placeholder="e.g. INV-001">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+            <div class="modal-group">
+                <label>Quantity</label>
+                <div style="display:flex;gap:0.3rem;"><button type="button" class="btn btn-outline" id="qtyMinus" style="padding:0 1rem;font-size:1.2rem;">−</button><input type="number" id="modalQtyInput" min="1" step="1" value="1" style="text-align:center;"><button type="button" class="btn btn-outline" id="qtyPlus" style="padding:0 1rem;font-size:1.2rem;">+</button></div>
+            </div>
+            <div class="modal-group">
+                <label>Price (AED) <span id="oldPriceRef" style="color:var(--muted);font-weight:700;"></span></label>
+                <input type="number" id="modalPriceInput" step="0.5" min="0">
+            </div>
+        </div>
+        <div class="modal-group edit-only">
+            <label>Remarks / Discrepancy Note</label>
+            <textarea id="modalRemarksInput" rows="2" placeholder="TYPE REMARKS HERE..."></textarea>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+            <button class="btn btn-primary btn-block" id="saveModalBtn">CONFIRM & SAVE</button>
+            <button class="btn btn-danger btn-sm" id="deleteModalItemBtn" style="display:none;">REMOVE</button>
+        </div>
+    </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="rangeExportModal">
+    <div class="modal-card">
+        <div class="modal-title">
+            <span>EXPORT REPORT</span>
+            <button class="btn btn-sm btn-outline" id="closeRangeModalBtn" style="padding:0.2rem 0.5rem;">✕</button>
+        </div>
+        <div class="modal-group">
+            <label>SELECT DATE RANGE</label>
+            <select id="rangeSelect">
+                <option value="single">CURRENT SELECTED DATE</option>
+                <option value="last_sent">SINCE LAST SENT DATE TO TODAY</option>
+                <option value="this_month">THIS MONTH (1ST TO TODAY)</option>
+                <option value="all">ALL DATES</option>
+                <option value="custom">DATE TO DATE</option>
+            </select>
+        </div>
+        <div id="customDateRow" style="display:none; grid-template-columns:1fr 1fr; gap:0.5rem;">
+            <div class="modal-group"><label>FROM DATE</label><input type="date" id="rangeStartDate"></div>
+            <div class="modal-group"><label>TO DATE</label><input type="date" id="rangeEndDate"></div>
+        </div>
+        <div id="rangeSummary" class="small-note" style="margin:0.2rem 0 0;color:var(--navy);"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-top:0.8rem;">
+            <button class="btn btn-primary btn-block" id="rangeExportCsvBtn">📊 CSV</button>
+            <button class="btn btn-outline btn-block" id="rangeExportTsvBtn">📋 TSV</button>
+            <button class="btn btn-green btn-block" id="rangeExportImgBtn">📸 IMAGE</button>
+            <button class="btn btn-wa btn-block" id="rangeWhatsAppBtn">💬 WHATSAPP</button>
+        </div>
+    </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="importModal">
+    <div class="modal-card">
+        <div class="modal-title">
+            <span>SMART PASTE / IMPORT</span>
+            <button class="btn btn-sm btn-outline" id="closeImportModalBtn" style="padding:0.2rem 0.5rem;">✕</button>
+        </div>
+        <div class="small-note" style="text-align:left;margin-bottom:0.5rem;color:var(--navy);font-weight:800;">PASTE TSV/CSV LINES (name TAB qty TAB price) OR (name,qty,price)</div>
+        <textarea class="paste-area" id="importTextArea" placeholder="OMEGA 3&#9;2&#9;299&#10;MAGNESIUM,1,189"></textarea>
+        <div class="modal-group" style="margin-top:0.6rem;">
+            <label>IMPORT INTO DATE</label>
+            <input type="date" id="importTargetDate">
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-top:0.6rem;">
+            <button class="btn btn-primary btn-block" id="importParseBtn">✅ PARSE & IMPORT</button>
+        </div>
+    </div>
+</div>
+
+<div class="app">
+    <div class="topbar">
+        <div class="topbar-row1">
+            <h1>VYSAKH <span>SALES</span></h1>
+            <div class="topbar-right">
+                <span class="sync-dot offline" id="syncIndicator"><span class="d"></span><span id="syncLabel">LOCAL</span></span>
+                <button class="icon-btn" id="undoBtn" title="Undo">↶</button>
+                <button class="icon-btn" id="redoBtn" title="Redo">↷</button>
+            </div>
+        </div>
+        <div class="date-bar">
+            <button class="date-nav-btn" id="prevDayBtn">◀</button>
+            <div class="date-picker-wrap">
+                <span>📅</span>
+                <input type="date" class="date-input" id="activeDatePicker">
+                <button class="today-jump-btn" id="jumpTodayBtn">TODAY</button>
+            </div>
+            <button class="date-nav-btn" id="nextDayBtn">▶</button>
+        </div>
+    </div>
+
+    <!-- TAB 1: SELL -->
+    <div class="panel active" id="panel-sell">
+        <div class="loc-bar" id="dashboardLocBar">
+            <div class="loc-tab active" data-loc="DUBAI MALL">DUBAI MALL</div>
+            <div class="loc-tab" data-loc="RESIDENCE">RESIDENCE</div>
+            <div class="loc-tab" data-loc="IBN">IBN</div>
+        </div>
+        <div class="dashboard-tiles" id="dashboardTiles"></div>
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.65rem;">
+                <div style="font-size:0.88rem;font-weight:900;color:var(--navy);">⚡ TAP A MEDICINE TO ADD</div>
+                <div style="font-size:0.68rem;color:var(--muted);font-weight:800;" id="promoCount"></div>
+            </div>
+            <div class="brand-chips" id="brandChips"></div>
+            <div class="search-wrap">
+                <input type="text" id="searchInput" placeholder="SEARCH MEDICINE…">
+                <button class="filter-toggle" id="promoFilterBtn">PROMO</button>
+            </div>
+            <div class="grid-products" id="productGrid"></div>
+        </div>
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.4rem;gap:0.4rem;flex-wrap:wrap;">
+                <div style="font-size:0.88rem;font-weight:900;color:var(--navy);" id="salesCardTitle">SALES FOR TODAY</div>
+                <button class="btn btn-sm btn-outline" id="clearDayBtn" style="color:var(--red);border-color:#ffd5d5;">CLEAR DATE</button>
+            </div>
+            <div class="table-container">
+                <table class="sales-table" id="salesTable">
+                    <thead><tr><th>DATE / TIME / LOC</th><th>INV</th><th>DESCRIPTION</th><th>QTY</th><th>PRICE</th><th>TOTAL</th><th>REMARKS</th></tr></thead>
+                    <tbody id="todayTableBody"><tr><td colspan="7" class="empty-msg">NO SALES FOR THIS DATE.</td></tr></tbody>
+                </table>
+            </div>
+            <div class="summary-box" style="margin-top:0.8rem;">
+                <div><div class="lbl">TOTAL</div><div class="val" id="todayTotal">0.00</div></div>
+                <div><div class="lbl">AMT</div><div class="val" id="todayCommission" style="color:#6ee7b7;">0.00</div></div>
+                <div class="commission" id="commissionPctBadge">10%</div>
+            </div>
+        </div>
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">
+            <button class="btn btn-green btn-block" id="exportBtn" style="flex:2;">📸 EXPORT IMAGE</button>
+            <button class="btn btn-outline btn-block" id="exportCsvBtn" style="flex:1;background:white;color:var(--navy);border-color:var(--border);">📊 CSV</button>
+        </div>
+    </div>
+
+    <!-- TAB 2: MASTER LEDGER (FULL INLINE EDIT) -->
+    <div class="panel" id="panel-ledger">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;gap:0.4rem;flex-wrap:wrap;">
+                <div style="font-size:0.88rem;font-weight:900;color:var(--navy);">📒 MASTER LEDGER</div>
+                <div style="display:flex;gap:0.35rem;">
+                    <button class="btn btn-sm btn-primary" id="newDateBtn">+ NEW DATE</button>
+                    <button class="btn btn-sm btn-outline" id="openImportBtn">📥 IMPORT</button>
+                </div>
+            </div>
+            <input type="text" class="ledger-search" id="ledgerSearch" placeholder="Search product / date / store…">
+            <div id="ledgerList"></div>
+            <div class="summary-box" style="margin-top:0.6rem;">
+                <div><div class="lbl">GRAND TOTAL</div><div class="val" id="ledgerGrandTotal">0.00</div></div>
+                <div><div class="lbl">TOTAL AMT</div><div class="val" id="ledgerGrandComm" style="color:#6ee7b7;">0.00</div></div>
+                <div><div class="lbl">PENDING</div><div class="val" id="ledgerPending" style="color:#fbbf24;">0.00</div></div>
+                <div class="commission" id="ledgerPctBadge">10%</div>
+            </div>
+            <div class="ledger-actions">
+                <button class="btn btn-sm btn-outline" id="ledgerExportAllBtn" style="flex:1;">📊 EXPORT ALL</button>
+                <button class="btn btn-sm btn-wa" id="ledgerWhatsAppBtn" style="flex:1;">💬 WHATSAPP</button>
+            </div>
+        </div>
+        <div class="card">
+            <div style="font-size:0.88rem;font-weight:900;color:var(--navy);margin-bottom:0.45rem;">📊 PAYMENT RECONCILIATION</div>
+            <div id="reconciliationBox" style="font-size:0.78rem;color:#2b3e5c;line-height:1.75;font-weight:700;"></div>
+        </div>
+    </div>
+
+    <!-- TAB 3: SETTINGS -->
+    <div class="panel" id="panel-settings">
+        <div class="card">
+            <div style="font-size:0.88rem;font-weight:900;color:var(--navy);margin-bottom:0.3rem;">➕ ADD NEW MEDICINE</div>
+            <div class="add-product-card">
+                <div class="modal-group"><label>BRAND / GROUP NAME</label><input type="text" id="newProdBrandInput" placeholder="e.g. KEENVITA"></div>
+                <div class="modal-group"><label>PRODUCT DESCRIPTION</label><input type="text" id="newProdNameInput" placeholder="e.g. OMEGA 3 2000MG 120 TAB"></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;">
+                    <div class="modal-group"><label>PRICE (AED)</label><input type="number" id="newProdPriceInput" step="0.5" min="0" placeholder="150.00"></div>
+                    <div class="modal-group" style="display:flex;flex-direction:column;justify-content:flex-end;">
+                        <label class="chk-label" style="padding:0.5rem 0;"><input type="checkbox" id="newProdPromoChk" style="width:16px;height:16px;"> IS PROMO ITEM?</label>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" id="addNewProdSubmitBtn" style="margin-top:0.4rem;">SAVE TO CATALOG</button>
+            </div>
+        </div>
+        <div class="card">
+            <div style="font-size:0.88rem;font-weight:900;color:var(--navy);margin-bottom:0.5rem;">⚙️ EXISTING MASTER MEDICINES</div>
+            <input type="text" id="settingsSearch" placeholder="Search catalogue A–Z…" style="width:100%;border:1.5px solid #d5e0ee;border-radius:.85rem;padding:.6rem .85rem;margin-bottom:.4rem;font-weight:700;font-size:16px!important;">
+            <div id="settingsList"></div>
+            <div class="setting-row" style="border-top:2px solid #e9edf4;margin-top:0.5rem;padding-top:0.7rem;">
+                <label class="chk-label">GLOBAL AMT %</label>
+                <input type="number" id="globalCommission" class="inp-pct" min="0" max="100" step="0.5" value="10">
+            </div>
+        </div>
+        <div class="card">
+            <div style="font-size:0.88rem;font-weight:900;color:var(--navy);margin-bottom:0.5rem;">☁️ CLOUD SYNC</div>
+            <div class="small-note" style="text-align:left;line-height:1.6;margin-bottom:0.6rem;">Set your Firebase config to sync across devices. Leave blank to stay local-only.</div>
+            <div class="modal-group"><label>FIREBASE CONFIG (JSON)</label><textarea id="firebaseConfigInput" rows="4" placeholder='{"apiKey":"...","projectId":"...","appId":"..."}' style="width:100%;font-size:11px;font-family:ui-monospace,monospace;"></textarea></div>
+            <div class="modal-group"><label>LEDGER DOC ID (shared key)</label><input type="text" id="ledgerDocIdInput" placeholder="e.g. vysakh-main" value="vysakh-main"></div>
+            <button class="btn btn-primary btn-block" id="connectSyncBtn">🔌 CONNECT / RECONNECT</button>
+            <div class="small-note" style="margin-top:0.4rem;" id="syncStatusText">Status: LOCAL ONLY</div>
+        </div>
+        <div class="card">
+            <div style="font-size:0.88rem;font-weight:900;color:var(--navy);margin-bottom:0.5rem;">💾 DATA & BACKUP</div>
+            <button class="btn btn-outline btn-block" id="exportBackupBtn">⬇️ DOWNLOAD FULL BACKUP (JSON)</button>
+            <button class="btn btn-outline btn-block" style="margin-top:0.5rem;" id="importBackupBtn">⬆️ RESTORE FROM BACKUP (JSON)</button>
+            <input type="file" id="importFileInput" accept="application/json,.json" style="display:none;">
+            <input type="file" id="productImageInput" accept="image/*" style="display:none;">
+            <button class="btn btn-danger btn-block" style="margin-top:0.5rem;" id="resetAllBtn">🗑️ RESET ALL DATA</button>
+        </div>
+    </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav-bar">
+    <button class="nav-tab-btn active" data-tab="sell">💊 <span>SELL</span></button>
+    <button class="nav-tab-btn" data-tab="ledger">📒 <span>LEDGER</span></button>
+    <button class="nav-tab-btn" data-tab="settings">⚙️ <span>SETTINGS</span></button>
+</div>
+
+<!-- RECONFIRM BANNER -->
+<div class="reconfirm-bar" id="reconfirmBar">
+    <div class="rb-msg" id="rbMsg">Added<div class="rb-timer"><i></i></div></div>
+    <button class="rb-undo" id="rbUndo">↩️ Undo</button>
+    <button id="rbMinus">-1</button>
+    <button id="rbPlus">+1</button>
+    <button class="rb-edit" id="rbEdit">✏️ Edit</button>
+    <button class="rb-ok" id="rbOk">✓ OK</button>
+</div>
+
+<div class="toast" id="toast"></div>
+<canvas id="exportCanvas" style="display:none;"></canvas>
+
+<script type="module">
+// ---------- FIREBASE (dynamic import, optional) ----------
+let firebaseReady = false;
+let firestoreMod = null;
+let db = null;
+let ledgerRef = null;
+let unsubSnapshot = null;
+
+// ---------- DATA ----------
+const DEFAULT_PRODUCTS = [
+    { id:'p1', brand:'KEENVITA', name:'KEENVITA OMEGA 3 2000MG 120 TAB', price:299.00, promo:false, img:'' },
+    { id:'p2', brand:'KEENVITA', name:'KEENVITA MOVFLEX JOINT CARE 120 TAB', price:299.00, promo:false, img:'' },
+    { id:'p3', brand:'KEENVITA', name:'KEENVITA MULTICOMPLETE', price:225.00, promo:false, img:'' },
+    { id:'p4', brand:'KEENVITA', name:'KEENVITA MAGNESIUM GLYCINATE 500MG 60S', price:189.00, promo:false, img:'' },
+    { id:'p5', brand:'KEENVITA', name:'KEENVITA VITAMIN D3 5000 IU 120 SOFTGELS', price:145.00, promo:false, img:'' },
+    { id:'p6', brand:'KEENVITA', name:'KEENVITA COQ10 200MG 60 CAPSULES', price:260.00, promo:false, img:'' },
+    { id:'p7', brand:"PURITAN'S PRIDE", name:"PURITAN'S PRIDE HYDROLYZED COLLAGEN 1000MG 180 TABS", price:165.00, promo:false, img:'' },
+    { id:'p8', brand:"PURITAN'S PRIDE", name:"PURITAN'S PRIDE MELATONIN 3MG 120 TABLETS", price:75.00, promo:false, img:'' },
+    { id:'p9', brand:"PURITAN'S PRIDE", name:"PURITAN'S PRIDE BIOTIN 10000 MCG 100 SOFTGELS", price:110.00, promo:false, img:'' },
+    { id:'p10', brand:"PURITAN'S PRIDE", name:"PURITAN'S PRIDE L-CARNITINE 500MG 60 TABLETS", price:135.00, promo:false, img:'' },
+    { id:'p11', brand:"PURITAN'S PRIDE", name:"PURITAN'S PRIDE GLUCOSAMINE CHONDROITIN COMPLEX 90S", price:145.00, promo:false, img:'' },
+    { id:'p12', brand:"PURITAN'S PRIDE", name:"PURITAN'S PRIDE VITAMIN C 1000MG WITH ROSE HIPS 100S", price:95.00, promo:false, img:'' },
+    { id:'p13', brand:'WHITE HEALTH', name:'WHITE HEALTH MAGNESIUM GLYCINATE 400', price:189.00, promo:false, img:'' },
+    { id:'p14', brand:'WHITE HEALTH', name:'WHITE HEALTH MAGNESIUM GLYCINATE (SALE)', price:143.50, promo:true, img:'' },
+    { id:'p15', brand:'WHITE HEALTH', name:'WHITE HEALTH PROBIOTIC XTRA 50 BILLION', price:310.00, promo:false, img:'' },
+    { id:'p16', brand:'WHITE HEALTH', name:'WHITE HEALTH VITA C-1000 LIPOSOMAL', price:160.00, promo:false, img:'' },
+    { id:'p17', brand:'WHITE HEALTH', name:'WHITE HEALTH SLIM DETOX CAPS 30S', price:189.00, promo:false, img:'' },
+    { id:'p18', brand:'WHITE HEALTH', name:'WHITE HEALTH COQ10 100MG 60S', price:240.00, promo:false, img:'' },
+    { id:'p19', brand:'WHITE HEALTH', name:'WHITE HEALTH OMEGA 3 TRIPLE STRENGTH 90S', price:275.00, promo:false, img:'' },
+    { id:'p20', brand:'HEALTH AID', name:'HEALTH AID OSTEZOIN TAB 90S', price:145.00, promo:false, img:'' },
+    { id:'p21', brand:'HEALTH AID', name:'HEALTH AID MAGCITRA TABS 60S', price:95.00, promo:false, img:'' },
+    { id:'p22', brand:'HEALTH AID', name:'HEALTH AID VITAMIN D3 1000IU CAPS 30S', price:65.00, promo:false, img:'' },
+    { id:'p23', brand:'HEALTH AID', name:'HEALTH AID OMEGAZONE PLUS CAPS 30S', price:115.00, promo:false, img:'' },
+    { id:'p24', brand:'HEALTH AID', name:'HEALTH AID CARBOSLIM CAPS 60S', price:155.00, promo:false, img:'' },
+    { id:'p25', brand:'HEALTH AID', name:'HEALTH AID SIBERSLIM TABS 60S', price:160.00, promo:false, img:'' },
+    { id:'p26', brand:'HEALTH AID', name:'HEALTH AID CROMIUM TAB 60S', price:85.00, promo:false, img:'' },
+    { id:'p27', brand:'HEALTH AID', name:'HEALTH AID L ARGININE 500MG TAB 60S', price:135.00, promo:false, img:'' },
+    { id:'p28', brand:'HEALTH AID', name:'HEALTH AID MAGNESIUM BISGLYCINATE 375MG 60S', price:110.00, promo:false, img:'' },
+    { id:'p29', brand:'PAXAS / TAUROPAX', name:'TAUROPAX FORCE 60 CAPSULES', price:290.00, promo:false, img:'' },
+    { id:'p30', brand:'PAXAS / TAUROPAX', name:'PAXAS BELLY FAT 120 CAPS', price:210.00, promo:false, img:'' },
+    { id:'p31', brand:'PAXAS / TAUROPAX', name:'PAXAS SLIMMING TABS 20 EFFERVESCENT', price:95.00, promo:false, img:'' },
+    { id:'p32', brand:'PAXAS / TAUROPAX', name:'PAXAS SERENITY SHOTS 60ML', price:45.00, promo:false, img:'' }
+];
+
+let products = [];
+let salesByDate = {};
+let activeDateKey = '';
+let lastSent = null;
+let globalCommission = 10;
+let searchQuery = '';
+let promoOnly = false;
+let activeBrand = '';
+let imgUploadTargetIdx = null;
+let activeModalEntryId = null;
+let activeModalProdId = null;
+let lastAddedEntry = null;
+let ledgerQuery = '';
+let firebaseConfig = null;
+
+const STORAGE_KEY = 'vysakh_sales_data_v11';
+const FB_CFG_KEY = 'vysakh_fb_cfg_v1';
+const FB_DOC_KEY = 'vysakh_fb_doc_v1';
+
+// DOM
+const $ = id => document.getElementById(id);
+const productGrid = $('productGrid');
+const dashboardTiles = $('dashboardTiles');
+const todayTableBody = $('todayTableBody');
+const todayTotalEl = $('todayTotal');
+const todayCommissionEl = $('todayCommission');
+const commissionPctBadge = $('commissionPctBadge');
+const activeDatePicker = $('activeDatePicker');
+const jumpTodayBtn = $('jumpTodayBtn');
+const salesCardTitle = $('salesCardTitle');
+const settingsListEl = $('settingsList');
+const toastEl = $('toast');
+const exportCanvas = $('exportCanvas');
+const promoCountEl = $('promoCount');
+const searchInput = $('searchInput');
+const promoFilterBtn = $('promoFilterBtn');
+const stickySummary = null; // removed, using ledger summary
+const globalCommissionInput = $('globalCommission');
+const importFileInput = $('importFileInput');
+const productImageInput = $('productImageInput');
+const brandChipsEl = $('brandChips');
+const ledgerListEl = $('ledgerList');
+const syncIndicator = $('syncIndicator');
+const syncLabel = $('syncLabel');
+
+const dashboardLocTabs = document.querySelectorAll('#dashboardLocBar .loc-tab');
+const modalLocTabs = document.querySelectorAll('#modalLocBar .loc-tab');
+
+const newProdBrandInput = $('newProdBrandInput');
+const newProdNameInput = $('newProdNameInput');
+const newProdPriceInput = $('newProdPriceInput');
+const newProdPromoChk = $('newProdPromoChk');
+const addNewProdSubmitBtn = $('addNewProdSubmitBtn');
+
+const quickModal = $('quickModal');
+const modalProdTitle = $('modalProdTitle');
+const modalActiveDateDisplay = $('modalActiveDateDisplay');
+const modalInvInput = $('modalInvInput');
+const modalQtyInput = $('modalQtyInput');
+const modalPriceInput = $('modalPriceInput');
+const modalRemarksInput = $('modalRemarksInput');
+const oldPriceRef = $('oldPriceRef');
+const saveModalBtn = $('saveModalBtn');
+const deleteModalItemBtn = $('deleteModalItemBtn');
+const closeModalBtn = $('closeModalBtn');
+const modalCatRow = $('modalCatRow');
+const modalCatChk = $('modalCatChk');
+const modalCatTxt = $('modalCatTxt');
+const modalNameInput = $('modalNameInput');
+const modalDateInput = $('modalDateInput');
+const modalTimeInput = $('modalTimeInput');
+
+// helpers
+function todayKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function firstOfMonthKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'; }
+function currentShiftTime(){ const d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+function shiftDateKey(key, delta){ const [y,m,d]=key.split('-').map(Number); const dt=new Date(y,m-1,d); dt.setDate(dt.getDate()+delta); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+function formatDateDisplay(key){ if(!key) return '—'; const [y,m,d]=key.split('-'); return d+'/'+m+'/'+y; }
+function showToast(msg){ toastEl.innerHTML=''; const s=document.createElement('span'); s.textContent=msg; toastEl.appendChild(s); toastEl.classList.add('show'); clearTimeout(toastEl._t); toastEl._t=setTimeout(()=>toastEl.classList.remove('show'),2800); }
+function uid(){ return 'id_'+Date.now()+'_'+Math.random().toString(36).slice(2,6); }
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getInitials(name){ const w=(name||'').trim().split(/\s+/); if(w.length>=2) return (w[0][0]+w[1][0]).toUpperCase(); else if(w.length===1&&w[0].length>=2) return w[0].substring(0,2).toUpperCase(); return 'P'; }
+function normTime(t){ const m=/(\d{1,2}):(\d{2})\s*(AM|PM)?/i.exec(t||''); if(!m) return ''; let h=+m[1]; const ap=(m[3]||'').toUpperCase(); if(ap==='PM'&&h<12)h+=12; if(ap==='AM'&&h===12)h=0; return String(h).padStart(2,'0')+':'+m[2]; }
+function normAllTimes(){ Object.values(salesByDate).forEach(d=>(d.entries||[]).forEach(e=>{ e.time=normTime(e.time)||e.time; })); }
+function insertSorted(arr,e){ let i=arr.findIndex(x=>(x.time||'')>(e.time||'')); if(i<0)i=arr.length; arr.splice(i,0,e); }
+function getActiveDateEntries(){ if(!salesByDate[activeDateKey]) salesByDate[activeDateKey]={entries:[],sent:false,reportSent:false,paymentReceived:false,store:'',updatedAt:Date.now()}; const o=salesByDate[activeDateKey]; if(!Array.isArray(o.entries)) o.entries=[]; if(o.reportSent===undefined)o.reportSent=!!o.sent; if(o.paymentReceived===undefined)o.paymentReceived=false; return o.entries; }
+
+// undo/redo 100 steps
+const undoStack=[], redoStack=[];
+function setSync(state,label){ syncIndicator.className='sync-dot '+state; syncLabel.textContent=label||state.toUpperCase(); }
+function checkpoint(label){
+    undoStack.push(JSON.stringify(salesByDate));
+    if(undoStack.length>100) undoStack.shift();
+    redoStack.length=0;
+    updateUndoButtons();
+    showReconfirm(label||'CHANGE MADE', null);
+}
+function doUndo(){ if(!undoStack.length)return; redoStack.push(JSON.stringify(salesByDate)); salesByDate=JSON.parse(undoStack.pop()); saveData(); renderAll(); updateUndoButtons(); showToast('UNDONE'); }
+function doRedo(){ if(!redoStack.length)return; undoStack.push(JSON.stringify(salesByDate)); salesByDate=JSON.parse(redoStack.pop()); saveData(); renderAll(); updateUndoButtons(); showToast('REDONE'); }
+function updateUndoButtons(){ $('undoBtn').style.opacity = undoStack.length?'1':'0.4'; $('redoBtn').style.opacity = redoStack.length?'1':'0.4'; }
+$('undoBtn').addEventListener('click', doUndo);
+$('redoBtn').addEventListener('click', doRedo);
+
+// FIREBASE
+async function loadFirebaseConfig(){
+    try { firebaseConfig = JSON.parse(localStorage.getItem(FB_CFG_KEY)||'null'); } catch(e){ firebaseConfig=null; }
+    const docId = localStorage.getItem(FB_DOC_KEY)||'vysakh-main';
+    if(firebaseConfig) $('firebaseConfigInput').value = JSON.stringify(firebaseConfig,null,2);
+    $('ledgerDocIdInput').value = docId;
+    if(firebaseConfig){ await connectFirebase(); } else { setSync('offline','LOCAL'); $('syncStatusText').textContent='Status: LOCAL ONLY'; }
+}
+async function connectFirebase(){
+    try {
+        if(!firebaseConfig) throw new Error('no config');
+        const [appMod, fsMod] = await Promise.all([
+            import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+            import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
+        ]);
+        firestoreMod = fsMod;
+        let app;
+        try { app = appMod.getApp(); } catch(e){ app = appMod.initializeApp(firebaseConfig); }
+        db = fsMod.getFirestore(app);
+        const docId = $('ledgerDocIdInput').value.trim()||'vysakh-main';
+        localStorage.setItem(FB_DOC_KEY, docId);
+        ledgerRef = fsMod.doc(db, 'ledgers', docId);
+        if(unsubSnapshot) unsubSnapshot();
+        setSync('syncing','CONNECTING');
+        unsubSnapshot = fsMod.onSnapshot(ledgerRef, (snap) => {
+            if(snap.exists()){
+                const remote = snap.data();
+                if(remote.products) products = remote.products;
+                if(remote.salesByDate) { salesByDate = remote.salesByDate; normAllTimes(); }
+                if(remote.lastSent!==undefined) lastSent = remote.lastSent;
+                if(remote.globalCommission!==undefined) globalCommission = remote.globalCommission;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({products,salesByDate,lastSent,globalCommission}));
+                renderAll();
+                setSync('synced','SYNCED');
+            } else {
+                // first time: push local data up
+                saveData();
+                setSync('synced','SYNCED');
+            }
+        }, (err) => {
+            console.warn('snapshot err', err);
+            setSync('offline','OFFLINE');
+            $('syncStatusText').textContent='Status: OFFLINE — '+err.message;
+        });
+        firebaseReady = true;
+        $('syncStatusText').textContent = 'Status: CONNECTED to doc "'+docId+'"';
+        showToast('CLOUD SYNC CONNECTED');
+    } catch(e){
+        console.warn(e);
+        firebaseReady=false;
+        setSync('offline','LOCAL');
+        $('syncStatusText').textContent = 'Status: FAILED — '+e.message;
+        showToast('SYNC FAILED: '+e.message);
+    }
+}
+$('connectSyncBtn').addEventListener('click', async ()=>{
+    try {
+        firebaseConfig = JSON.parse($('firebaseConfigInput').value||'{}');
+        if(!firebaseConfig.apiKey) throw new Error('config has no apiKey');
+        localStorage.setItem(FB_CFG_KEY, JSON.stringify(firebaseConfig));
+    } catch(e){ showToast('INVALID FIREBASE CONFIG JSON'); return; }
+    await connectFirebase();
+});
+
+// SAVE
+let saveDebounce=null;
+function saveData(){
+    const payload = { products, salesByDate, lastSent, globalCommission };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(payload)); } catch(e){ showToast('STORAGE FULL!'); }
+    if(firebaseReady && ledgerRef && firestoreMod){
+        clearTimeout(saveDebounce);
+        setSync('syncing','SAVING');
+        saveDebounce = setTimeout(async ()=>{
+            try {
+                await firestoreMod.setDoc(ledgerRef, payload, { merge:true });
+                setSync('synced','SYNCED');
+            } catch(e){ console.warn(e); setSync('offline','OFFLINE'); }
+        }, 350);
+    }
+}
+
+function loadData(){
+    activeDateKey = todayKey();
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(raw){
+            const d = JSON.parse(raw);
+            products = d.products && d.products.length ? d.products : JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+            salesByDate = d.salesByDate || {};
+            normAllTimes();
+            lastSent = d.lastSent || null;
+            globalCommission = d.globalCommission ?? 10;
+            return;
+        }
+    } catch(e){ console.warn(e); }
+    products = JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
+    salesByDate = {};
+    lastSent = null;
+    globalCommission = 10;
+}
+
+// LOCATION
+dashboardLocTabs.forEach(t=>t.addEventListener('click',()=>{ dashboardLocTabs.forEach(x=>x.classList.remove('active')); t.classList.add('active'); }));
+modalLocTabs.forEach(t=>t.addEventListener('click',()=>{ modalLocTabs.forEach(x=>x.classList.remove('active')); t.classList.add('active'); }));
+function getActiveDashboardLoc(){ const a=document.querySelector('#dashboardLocBar .loc-tab.active'); return a?a.dataset.loc:'DUBAI MALL'; }
+function setLoc(l){ modalLocTabs.forEach(t=>t.classList.toggle('active',t.dataset.loc===l)); }
+function getModalLoc(){ return document.querySelector('#modalLocBar .loc-tab.active').dataset.loc; }
+
+function renameAll(pid,name){ Object.values(salesByDate).forEach(d=>(d.entries||[]).forEach(e=>{ if(e.prodId===pid)e.name=name; })); }
+
+let modalMode='edit', modalCat=null, activeModalDate=null;
+function setModalMode(m){ modalMode=m; quickModal.querySelectorAll('.edit-only').forEach(el=>{ el.style.display=m==='add'?'none':''; }); deleteModalItemBtn.style.display=m==='edit'?'inline-flex':'none'; }
+
+function updateCatRow(){
+    const price=parseFloat(modalPriceInput.value)||0, name=modalNameInput.value.trim().toUpperCase();
+    let show=false, txt='', isNew=false;
+    if(modalMode==='add'){
+        if(modalCat&&modalCat.custom){ show=true; isNew=true; txt='SAVE TO CATALOG AS NEW ITEM'; }
+        else if(modalCat){ show=price!==modalCat.price; txt='ALSO UPDATE CATALOG PRICE'; }
+    } else {
+        const p=products.find(x=>x.id===activeModalProdId);
+        if(p){ const n=name!==p.name, pr=price!==p.price; show=n||pr; txt='ALSO UPDATE CATALOG ('+(n?'NAME':'')+(n&&pr?' + ':'')+(pr?'PRICE':'')+')'; }
+        else { show=true; isNew=true; txt='SAVE TO CATALOG AS NEW ITEM'; }
+    }
+    const was=modalCatRow.style.display==='flex';
+    modalCatRow.style.display=show?'flex':'none'; modalCatTxt.textContent=txt;
+    if(!show) modalCatChk.checked=false; else if(!was) modalCatChk.checked=!isNew;
+}
+modalNameInput.addEventListener('input',updateCatRow); modalPriceInput.addEventListener('input',updateCatRow);
+$('qtyMinus').addEventListener('click',()=>{ modalQtyInput.value=Math.max(1,(parseInt(modalQtyInput.value,10)||1)-1); });
+$('qtyPlus').addEventListener('click',()=>{ modalQtyInput.value=(parseInt(modalQtyInput.value,10)||1)+1; });
+
+function openAddModal(prod){
+    setModalMode('add'); modalCat=prod; activeModalEntryId=null; activeModalProdId=prod.id; activeModalDate=activeDateKey;
+    modalProdTitle.textContent='ADD SALE · '+formatDateDisplay(activeDateKey);
+    modalNameInput.value=prod.name; modalNameInput.readOnly=!prod.custom; modalNameInput.placeholder='ITEM NAME';
+    modalQtyInput.value=1; modalPriceInput.value=prod.price;
+    oldPriceRef.textContent=prod.custom?'':'(CATALOG: AED '+prod.price.toFixed(2)+')';
+    setLoc(getActiveDashboardLoc()); saveModalBtn.textContent='ADD TO DAY';
+    modalCatRow.style.display='none'; updateCatRow(); quickModal.classList.add('active');
+}
+function openEditModal(entry,dateKey){
+    setModalMode('edit'); modalCat=null; activeModalEntryId=entry.id; activeModalProdId=entry.prodId; activeModalDate=dateKey||activeDateKey;
+    const prod=products.find(p=>p.id===entry.prodId);
+    modalProdTitle.textContent='EDIT ENTRY'; modalActiveDateDisplay.textContent=formatDateDisplay(activeModalDate);
+    modalNameInput.readOnly=false; modalNameInput.value=entry.name; modalDateInput.value=activeModalDate; modalTimeInput.value=normTime(entry.time);
+    modalInvInput.value=entry.inv||''; modalQtyInput.value=entry.qty||1; modalPriceInput.value=entry.price; modalRemarksInput.value=entry.remarks||'';
+    oldPriceRef.textContent=prod?'(CATALOG: AED '+prod.price.toFixed(2)+')':'(NOT IN CATALOG)';
+    setLoc(entry.loc||'DUBAI MALL'); saveModalBtn.textContent='CONFIRM & SAVE';
+    modalCatRow.style.display='none'; updateCatRow(); quickModal.classList.add('active');
+}
+closeModalBtn.addEventListener('click',()=>quickModal.classList.remove('active'));
+quickModal.addEventListener('click',e=>{ if(e.target===quickModal) quickModal.classList.remove('active'); });
+
+saveModalBtn.addEventListener('click',()=>{
+    const qty=Math.max(1,parseInt(modalQtyInput.value,10)||1), price=Math.max(0,parseFloat(modalPriceInput.value)||0);
+    const name=modalNameInput.value.trim().toUpperCase(), loc=getModalLoc();
+    if(!name){ showToast('ENTER ITEM NAME'); return; }
+    const catOn=modalCatChk.checked&&modalCatRow.style.display!=='none';
+    if(modalMode==='add'){
+        checkpoint('ADDED ×'+qty+' '+name.slice(0,18));
+        let prod=modalCat, pid=prod.id;
+        if(prod.custom){ pid=uid(); if(catOn) products.push({id:pid,brand:'GENERAL',name,price,promo:false,img:''}); }
+        else if(catOn){ prod.price=price; }
+        const dateObj=salesByDate[activeDateKey]||(salesByDate[activeDateKey]={entries:[],sent:false,reportSent:false,paymentReceived:false,store:''});
+        dateObj.updatedAt=Date.now();
+        const ex=dateObj.entries.find(e=>e.prodId===pid&&!e.remarks&&e.price===price&&e.loc===loc);
+        if(ex){ ex.qty+=qty; lastAddedEntry=ex; }
+        else { const newE={id:uid(),prodId:pid,brand:(prod.brand||'OTHER').toUpperCase(),name,promo:!!prod.promo,time:currentShiftTime(),loc,inv:'INV-'+Math.floor(1000+Math.random()*9000),qty,price,remarks:prod.custom?'MANUAL ENTRY':'',billImg:''}; dateObj.entries.push(newE); lastAddedEntry=newE; }
+        saveData(); quickModal.classList.remove('active'); renderAll();
+        showReconfirm('ADDED ×'+qty+' '+name.slice(0,20), lastAddedEntry);
+        return;
+    }
+    const ds=salesByDate[activeModalDate], entry=ds&&ds.entries.find(e=>e.id===activeModalEntryId);
+    if(!entry){ quickModal.classList.remove('active'); return; }
+    checkpoint('ENTRY UPDATED');
+    const newDate=modalDateInput.value||activeModalDate, newTime=modalTimeInput.value||normTime(entry.time), timeChanged=newTime!==normTime(entry.time);
+    Object.assign(entry,{name,loc,qty,price,time:newTime,inv:(modalInvInput.value.trim()||'INV-001').toUpperCase(),remarks:modalRemarksInput.value.trim().toUpperCase()});
+    if(catOn){
+        const p=products.find(x=>x.id===entry.prodId);
+        if(p){ p.price=price; if(p.name!==name){ p.name=name; renameAll(p.id,name); } }
+        else products.push({id:entry.prodId,brand:(entry.brand&&entry.brand!=='CUSTOM')?entry.brand:'GENERAL',name,price,promo:!!entry.promo,img:''});
+    }
+    ds.updatedAt=Date.now();
+    if(newDate!==activeModalDate||timeChanged){
+        ds.entries.splice(ds.entries.indexOf(entry),1);
+        const td=salesByDate[newDate]||(salesByDate[newDate]={entries:[],sent:false,reportSent:false,paymentReceived:false,store:''});
+        insertSorted(td.entries,entry); td.updatedAt=Date.now();
+    }
+    saveData(); quickModal.classList.remove('active'); renderAll();
+});
+
+deleteModalItemBtn.addEventListener('click',()=>{
+    const ds=salesByDate[activeModalDate]; if(!ds)return;
+    const i=ds.entries.findIndex(e=>e.id===activeModalEntryId); if(i<0)return;
+    checkpoint('ENTRY REMOVED'); ds.entries.splice(i,1); ds.updatedAt=Date.now();
+    saveData(); quickModal.classList.remove('active'); renderAll();
+});
+
+// RECONFIRM BANNER
+const rb = $('reconfirmBar');
+let rbTimer=null;
+function showReconfirm(msg, entry){
+    $('rbMsg').innerHTML = escapeHtml(msg)+'<div class="rb-timer"><i></i></div>';
+    rb.classList.add('show');
+    clearTimeout(rbTimer);
+    rbTimer = setTimeout(()=>rb.classList.remove('show'), 4500);
+    $('rbUndo').onclick = ()=>{ rb.classList.remove('show'); doUndo(); };
+    $('rbMinus').onclick = ()=>{ if(!entry) return; if(entry.qty>1){ checkpoint('−1 '+entry.name.slice(0,15)); entry.qty-=1; saveData(); renderAll(); } rb.classList.remove('show'); };
+    $('rbPlus').onclick = ()=>{ if(!entry) return; checkpoint('+1 '+entry.name.slice(0,15)); entry.qty+=1; saveData(); renderAll(); rb.classList.remove('show'); };
+    $('rbEdit').onclick = ()=>{ rb.classList.remove('show'); if(entry) openEditModal(entry, activeDateKey); };
+    $('rbOk').onclick = ()=>rb.classList.remove('show');
+}
+
+// EXPORT MODAL
+const rangeExportModal = $('rangeExportModal');
+$('openRangeModalBtn')?.addEventListener('click',()=>rangeExportModal.classList.add('active'));
+$('closeRangeModalBtn').addEventListener('click',()=>rangeExportModal.classList.remove('active'));
+const rangeSelect = $('rangeSelect');
+const customDateRow = $('customDateRow');
+const rangeStartDate = $('rangeStartDate');
+const rangeEndDate = $('rangeEndDate');
+rangeSelect.addEventListener('change',()=>{ customDateRow.style.display = rangeSelect.value==='custom'?'grid':'none'; });
+
+function getSelectedDateRange(silent){
+    let start='', end=todayKey();
+    if(rangeSelect.value==='single'){ start=activeDateKey; end=activeDateKey; }
+    else if(rangeSelect.value==='last_sent'){ start=lastSent?lastSent.date:'2000-01-01'; }
+    else if(rangeSelect.value==='this_month'){ start=firstOfMonthKey(); }
+    else if(rangeSelect.value==='all'){ start='2000-01-01'; }
+    else { start=rangeStartDate.value; end=rangeEndDate.value; if(!start||!end){ if(!silent)showToast('PLEASE SELECT BOTH DATES'); return null; } if(start>end){ if(!silent)showToast('START DATE MUST BE BEFORE END DATE'); return null; } }
+    return {start,end};
+}
+function getAggregatedEntries(start,end){
+    let all=[];
+    Object.keys(salesByDate).forEach(dKey=>{ if(dKey>=start&&dKey<=end&&salesByDate[dKey].entries) all=all.concat(salesByDate[dKey].entries.map(e=>({...e,activeDate:dKey,store:salesByDate[dKey].store||''}))); });
+    all.sort((a,b)=>{ if(a.activeDate!==b.activeDate) return a.activeDate.localeCompare(b.activeDate); return (a.time||'').localeCompare(b.time||''); });
+    return all;
+}
+
+function buildCsv(entries, sep){
+    const rows = [];
+    rows.push(['LOCATION','DATE','STORE','TIME','INVOICE','BRAND GROUP','PRODUCT DESCRIPTION','CATEGORY','QUANTITY','UNIT PRICE (AED)','TOTAL AMOUNT (AED)','REMARKS']);
+    const grouped={};
+    entries.forEach(e=>{ const loc=(e.loc||'DUBAI MALL').toUpperCase(); if(!grouped[loc])grouped[loc]=[]; grouped[loc].push(e); });
+    for(const [loc,items] of Object.entries(grouped)){
+        items.forEach(e=>{
+            rows.push([loc, formatDateDisplay(e.activeDate), e.store||'', e.time||'', e.inv||'', e.brand||'', e.name||'', e.promo?'PROMO':'REGULAR', e.qty, e.price.toFixed(2), (e.price*e.qty).toFixed(2), e.remarks||'']);
+        });
+    }
+    return rows.map(r=>r.map(c=>{
+        const s = String(c==null?'':c);
+        if(sep==='\t') return s.replace(/\t/g,' ');
+        if(s.includes(sep)||s.includes('"')||s.includes('\n')) return '"'+s.replace(/"/g,'""')+'"';
+        return s;
+    }).join(sep)).join('\r\n');
+}
+
+$('rangeExportCsvBtn').addEventListener('click',()=>{
+    const r=getSelectedDateRange(); if(!r)return;
+    const entries=getAggregatedEntries(r.start,r.end);
+    if(!entries.length){ showToast('NO SALES IN RANGE'); return; }
+    const csv = '\ufeff'+buildCsv(entries, ',');
+    downloadBlob(csv, 'VYSAKH-'+r.start+'-TO-'+r.end+'.csv', 'text/csv');
+    showToast('CSV DOWNLOADED');
+});
+$('rangeExportTsvBtn').addEventListener('click',()=>{
+    const r=getSelectedDateRange(); if(!r)return;
+    const entries=getAggregatedEntries(r.start,r.end);
+    if(!entries.length){ showToast('NO SALES IN RANGE'); return; }
+    const tsv = buildCsv(entries, '\t');
+    downloadBlob(tsv, 'VYSAKH-'+r.start+'-TO-'+r.end+'.tsv', 'text/tab-separated-values');
+    showToast('TSV DOWNLOADED');
+});
+function downloadBlob(text, filename, mime){
+    const blob = new Blob([text], {type: mime+';charset=utf-8'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+$('rangeExportImgBtn').addEventListener('click',()=>{
+    const r=getSelectedDateRange(); if(!r)return;
+    const entries=getAggregatedEntries(r.start,r.end);
+    if(!entries.length){ showToast('NO SALES IN RANGE'); return; }
+    generateImage(entries, r, 'image/jpeg', 0.9);
+});
+$('rangeWhatsAppBtn').addEventListener('click',()=>{
+    const r=getSelectedDateRange(); if(!r)return;
+    const entries=getAggregatedEntries(r.start,r.end);
+    if(!entries.length){ showToast('NO SALES IN RANGE'); return; }
+    const text = buildWhatsAppText(entries, r);
+    const url = 'https://wa.me/?text='+encodeURIComponent(text);
+    window.open(url, '_blank');
+    showToast('WHATSAPP OPENED');
+});
+
+function buildWhatsAppText(entries, r){
+    const grouped = {};
+    let grand=0, grandComm=0;
+    entries.forEach(e=>{ const loc=(e.loc||'DUBAI MALL'); if(!grouped[loc])grouped[loc]=[]; grouped[loc].push(e); grand += e.price*e.qty; if(!e.promo) grandComm += e.price*e.qty*globalCommission/100; });
+    let out = '*VYSAKH SALES REPORT*\n';
+    out += '📅 '+formatDateDisplay(r.start)+(r.start!==r.end?' → '+formatDateDisplay(r.end):'')+'\n';
+    for(const [loc,items] of Object.entries(grouped)){
+        out += '\n*🏬 '+loc+'*\n';
+        items.forEach(e=>{
+            out += '• '+(e.name||'').substring(0,40)+' ×'+e.qty+' = AED '+(e.price*e.qty).toFixed(2)+'\n';
+        });
+    }
+    out += '\n*GRAND TOTAL: AED '+grand.toFixed(2)+'*';
+    out += '\n*INCENTIVE ('+globalCommission+'%): AED '+grandComm.toFixed(2)+'*';
+    return out;
+}
+
+function generateImage(entries, r, mime='image/jpeg', quality=0.9){
+    const grouped={}; let grand=0, grandComm=0;
+    entries.forEach(e=>{ const loc=(e.loc||'DUBAI MALL'); if(!grouped[loc])grouped[loc]=[]; grouped[loc].push(e); grand+=e.price*e.qty; if(!e.promo) grandComm+=e.price*e.qty*globalCommission/100; });
+    const locKeys=Object.keys(grouped);
+    exportCanvas.width=720; exportCanvas.height=210+locKeys.length*50+entries.length*26;
+    const ctx=exportCanvas.getContext('2d');
+    ctx.fillStyle='#f2f5fa'; ctx.fillRect(0,0,720,exportCanvas.height);
+    ctx.fillStyle='#0a1931'; ctx.fillRect(20,20,680,75);
+    ctx.fillStyle='#ffffff'; ctx.font='bold 22px system-ui'; ctx.fillText('VYSAKH CONSOLIDATED SALES',40,52);
+    ctx.font='bold 12px system-ui'; ctx.fillText(`${formatDateDisplay(r.start)} → ${formatDateDisplay(r.end)}`,40,75);
+    let y=125;
+    for(const [loc,items] of Object.entries(grouped)){
+        ctx.fillStyle='#0a1931'; ctx.font='bold 16px system-ui'; ctx.textAlign='left'; ctx.fillText('LOC: '+loc,35,y); y+=22;
+        ctx.fillStyle='#43648b'; ctx.font='bold 11px system-ui'; ctx.fillText('DATE-TIME',35,y); ctx.fillText('DESCRIPTION',160,y); ctx.textAlign='right'; ctx.fillText('QTY',580,y); ctx.fillText('AMOUNT',680,y); ctx.textAlign='left'; y+=20;
+        items.forEach(ent=>{
+            ctx.fillStyle='#1d3149'; ctx.font='bold 12px system-ui';
+            ctx.fillText(formatDateDisplay(ent.activeDate)+' '+ent.time,35,y);
+            ctx.fillText('['+(ent.brand||'')+'] '+ent.name.substring(0,48),160,y);
+            ctx.textAlign='right'; ctx.fillText(String(ent.qty),580,y); ctx.fillText('AED '+(ent.price*ent.qty).toFixed(2),680,y); ctx.textAlign='left';
+            y+=24;
+        });
+        y+=10;
+    }
+    const footerY=y+10;
+    ctx.fillStyle='#0a1931'; ctx.fillRect(20,footerY,680,65);
+    ctx.fillStyle='#ffffff'; ctx.font='bold 16px system-ui'; ctx.fillText('GRAND TOTAL: AED '+grand.toFixed(2),40,footerY+38);
+    ctx.textAlign='right'; ctx.fillStyle='#6ee7b7'; ctx.fillText('INCENTIVE ('+globalCommission+'%): AED '+grandComm.toFixed(2),680,footerY+38);
+    const link=document.createElement('a');
+    link.download='VYSAKH-'+r.start+'-TO-'+r.end+'.jpg';
+    link.href=exportCanvas.toDataURL(mime, quality);
+    link.click();
+    showToast('IMAGE DOWNLOADED');
+}
+
+// IMPORT MODAL
+const importModal = $('importModal');
+$('openImportBtn').addEventListener('click',()=>{ $('importTargetDate').value=activeDateKey; importModal.classList.add('active'); });
+$('closeImportModalBtn').addEventListener('click',()=>importModal.classList.remove('active'));
+$('importParseBtn').addEventListener('click',()=>{
+    const text = $('importTextArea').value.trim();
+    if(!text){ showToast('PASTE DATA FIRST'); return; }
+    const target = $('importTargetDate').value || activeDateKey;
+    const lines = text.split(/\r?\n/).filter(l=>l.trim());
+    let added=0;
+    if(!salesByDate[target]) salesByDate[target]={entries:[],sent:false,reportSent:false,paymentReceived:false,store:''};
+    lines.forEach(line=>{
+        const parts = line.includes('\t') ? line.split('\t') : line.split(',');
+        if(parts.length<2) return;
+        const name = parts[0].trim().toUpperCase();
+        const qty = parseInt(parts[1],10)||1;
+        const price = parseFloat(parts[2])||0;
+        if(!name) return;
+        let prod = products.find(p=>p.name.toUpperCase()===name);
+        let pid = prod ? prod.id : uid();
+        if(!prod){ products.push({id:pid,brand:'IMPORTED',name,price,promo:false,img:''}); }
+        salesByDate[target].entries.push({id:uid(),prodId:pid,brand:prod?prod.brand:'IMPORTED',name,promo:false,time:currentShiftTime(),loc:getActiveDashboardLoc(),inv:'INV-IMP'+Math.floor(Math.random()*9000+1000),qty,price,remarks:'IMPORTED',billImg:''});
+        added++;
+    });
+    checkpoint('IMPORTED '+added+' ITEMS');
+    saveData(); renderAll();
+    importModal.classList.remove('active');
+    $('importTextArea').value='';
+    showToast('IMPORTED '+added+' ITEMS TO '+formatDateDisplay(target));
+});
+
+// WIDGETS
+function renderDashboardTiles(){
+    if(!products.length){ dashboardTiles.innerHTML=''; return; }
+    const sold={}; Object.values(salesByDate).forEach(d=>(d.entries||[]).forEach(e=>{ sold[e.prodId]=(sold[e.prodId]||0)+e.qty; }));
+    const list=[...products].sort((a,b)=>(sold[b.id]||0)-(sold[a.id]||0)||a.name.localeCompare(b.name)).slice(0,8);
+    dashboardTiles.innerHTML = list.map((p,i)=>{
+        const media = p.img?`<img src="${p.img}" alt="">`:`<span class="dash-tile-placeholder-text">${getInitials(p.name)}</span>`;
+        return `<div class="dash-tile" data-id="${p.id}" style="animation-delay:${i*0.04}s"><div class="dash-tile-img">${media}</div><div class="dash-tile-name">${escapeHtml(p.name)}</div></div>`;
+    }).join('');
+    dashboardTiles.querySelectorAll('.dash-tile').forEach(t=>t.addEventListener('click',()=>quickAddProduct(t.dataset.id)));
+}
+
+function renderBrandChips(){
+    const brands = [...new Set(products.map(p=>p.brand).filter(Boolean))].sort();
+    brandChipsEl.innerHTML = `<div class="brand-chip${activeBrand===''?' active':''}" data-b="">ALL</div>` + brands.map(b=>`<div class="brand-chip${activeBrand===b?' active':''}" data-b="${escapeHtml(b)}">${escapeHtml(b)}</div>`).join('');
+    brandChipsEl.querySelectorAll('.brand-chip').forEach(c=>c.addEventListener('click',()=>{ activeBrand=c.dataset.b; renderBrandChips(); renderProducts(); }));
+}
+
+function renderProducts(){
+    let list=[...products].sort((a,b)=>a.name.localeCompare(b.name));
+    if(activeBrand) list=list.filter(p=>p.brand===activeBrand);
+    if(searchQuery.trim()){ const q=searchQuery.trim().toLowerCase(); list=list.filter(p=>p.name.toLowerCase().includes(q)||(p.brand&&p.brand.toLowerCase().includes(q))); }
+    if(promoOnly) list=list.filter(p=>p.promo);
+    if(list.length===0){ productGrid.innerHTML='<div class="empty-msg" style="grid-column:1/-1;">NO MEDICINES MATCH.</div>'; return; }
+    const entries=getActiveDateEntries();
+    productGrid.innerHTML = list.map(p=>{
+        const badge=p.promo?'<span class="pbadge">PROMO</span>':'';
+        const totalQty=entries.filter(e=>e.prodId===p.id).reduce((s,e)=>s+e.qty,0);
+        const qtyBadge=totalQty>0?`<span class="qty-tap-badge">×${totalQty}</span>`:'';
+        const media=p.img?`<img src="${p.img}" alt="${escapeHtml(p.name)}">`:`<span class="pimg-placeholder-text">${getInitials(p.name)}</span>`;
+        return `<div class="product-tile${p.promo?' promo':''}" data-id="${p.id}">${qtyBadge}${badge}<div class="pimg-box">${media}</div><div class="pname">${escapeHtml(p.name)}</div><div class="pprice">AED ${p.price.toFixed(2)}</div></div>`;
+    }).join('');
+    productGrid.querySelectorAll('.product-tile').forEach(el=>el.addEventListener('click',()=>quickAddProduct(el.dataset.id)));
+}
+function quickAddProduct(prodId){ const p=products.find(x=>x.id===prodId); if(p) openAddModal(p); }
+
+function renderTodayTable(){
+    const entries=getActiveDateEntries();
+    if(entries.length===0){ todayTableBody.innerHTML=`<tr><td colspan="7" class="empty-msg">NO ENTRIES FOR ${formatDateDisplay(activeDateKey)}.</td></tr>`; return; }
+    todayTableBody.innerHTML = entries.map(ent=>{
+        const lineTotal=(ent.price*ent.qty).toFixed(2);
+        const promoTag=ent.promo?' <span style="color:#20a766;font-weight:800;font-size:0.6rem;">[PROMO]</span>':'';
+        const brandHeader=ent.brand?`<div style="font-size:0.58rem;color:var(--blue);font-weight:800;">[${escapeHtml(ent.brand)}]</div>`:'';
+        return `<tr class="table-row-item" data-id="${ent.id}" style="cursor:pointer;">
+            <td>${formatDateDisplay(activeDateKey)}<br><span style="font-size:0.6rem;color:var(--muted);font-weight:800;">${ent.time||''} • ${ent.loc||''}</span></td>
+            <td><strong>${escapeHtml(ent.inv||'—')}</strong></td>
+            <td>${brandHeader}${escapeHtml(ent.name)}${promoTag}</td>
+            <td><strong>×${ent.qty}</strong></td>
+            <td>AED ${ent.price.toFixed(2)}</td>
+            <td><strong style="color:var(--blue);">AED ${lineTotal}</strong></td>
+            <td style="font-size:0.68rem;color:#43648b;">${escapeHtml(ent.remarks||'—')}</td>
+        </tr>`;
+    }).join('');
+    todayTableBody.querySelectorAll('tr[data-id]').forEach(row=>row.addEventListener('click',()=>{ const en=entries.find(e=>e.id===row.dataset.id); if(en) openEditModal(en,activeDateKey); }));
+}
+
+function calcDateTotals(dateKey){
+    const obj=salesByDate[dateKey];
+    if(!obj||!Array.isArray(obj.entries)) return {total:0,commission:0,count:0};
+    let total=0,commission=0,count=0;
+    obj.entries.forEach(e=>{ const lt=e.price*e.qty; total+=lt; count+=e.qty; if(!e.promo) commission+=lt*globalCommission/100; });
+    return {total:+total.toFixed(2),commission:+commission.toFixed(2),count};
+}
+
+// LEDGER PAGE 2 - FULL INLINE EDIT
+function renderLedger(){
+    const q = ledgerQuery.trim().toLowerCase();
+    const keys = Object.keys(salesByDate).sort((a,b)=>b.localeCompare(a));
+    if(!keys.length){ ledgerListEl.innerHTML='<div class="empty-msg">NO LEDGER ENTRIES. TAP + NEW DATE.</div>'; renderReconciliation(); return; }
+    let grandTotal=0, grandComm=0, grandPending=0;
+    ledgerListEl.innerHTML = keys.map(dKey=>{
+        const obj = salesByDate[dKey];
+        if(!obj.entries||!obj.entries.length) return '';
+        // filter
+        const matchesQuery = !q || dKey.includes(q) || (obj.store||'').toLowerCase().includes(q) || obj.entries.some(e=>(e.name||'').toLowerCase().includes(q)||(e.loc||'').toLowerCase().includes(q));
+        if(!matchesQuery) return '';
+        const {total,commission,count} = calcDateTotals(dKey);
+        grandTotal+=total; grandComm+=commission;
+        if(obj.reportSent && !obj.paymentReceived) grandPending += total;
+        const rowsHtml = obj.entries.map((e,idx)=>{
+            const lt = (e.price*e.qty).toFixed(2);
+            return `<div class="ledger-row" data-d="${dKey}" data-id="${e.id}">
+                <div class="lr-name">${e.brand?'<span class="brand-tag">['+escapeHtml(e.brand)+']</span> ':''}${escapeHtml(e.name)}</div>
+                <input type="number" class="lr-qty" min="1" value="${e.qty}" data-field="qty">
+                <input type="number" class="lr-price" step="0.5" min="0" value="${e.price.toFixed(2)}" data-field="price">
+                <input type="text" class="lr-loc" value="${escapeHtml(e.loc||'')}" data-field="loc" placeholder="SOLD PLACE">
+                <div style="display:flex;gap:0.2rem;align-items:center;">
+                    <span class="lr-total">${lt}</span>
+                    <button class="lr-del" data-del="1">✕</button>
+                </div>
+            </div>`;
+        }).join('');
+        return `<div class="ledger-date-card" data-d="${dKey}">
+            <div class="ledger-head">
+                <input type="date" class="date-inp" value="${dKey}" data-role="date">
+                <input type="text" class="store-inp" value="${escapeHtml(obj.store||'')}" placeholder="STORE I WORKED" data-role="store">
+                <span class="status-pill ${obj.reportSent?'rep-on':'rep-off'}" data-toggle="report" title="Toggle report sent">${obj.reportSent?'✅ REPORT SENT':'📤 REPORT NOT SENT'}</span>
+                <span class="status-pill ${obj.paymentReceived?'pay-on':'pay-off'}" data-toggle="payment" title="Toggle payment">${obj.paymentReceived?'💰 PAID':'⏳ UNPAID'}</span>
+            </div>
+            <div class="ledger-body">
+                ${rowsHtml}
+                <div class="ledger-foot">
+                    <div class="lf-stat">Items: <strong>${count}</strong></div>
+                    <div class="lf-stat">Total: <strong>AED ${total.toFixed(2)}</strong></div>
+                    <div class="lf-stat lf-amt">AMT (${globalCommission}%): <strong>AED ${commission.toFixed(2)}</strong></div>
+                    <button class="btn btn-sm btn-outline" data-export="${dKey}" style="font-size:0.6rem;padding:0.25rem 0.5rem;">📊 Export</button>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+    $('ledgerGrandTotal').textContent = grandTotal.toFixed(2);
+    $('ledgerGrandComm').textContent = grandComm.toFixed(2);
+    $('ledgerPending').textContent = grandPending.toFixed(2);
+    $('ledgerPctBadge').textContent = globalCommission+'%';
+
+    // bind inline edits
+    ledgerListEl.querySelectorAll('.ledger-date-card').forEach(card=>{
+        const dKey = card.dataset.d;
+        const dateInp = card.querySelector('[data-role="date"]');
+        const storeInp = card.querySelector('[data-role="store"]');
+        dateInp.addEventListener('change',()=>{
+            const newD = dateInp.value;
+            if(!newD || newD===dKey) return;
+            checkpoint('DATE MOVED');
+            const obj = salesByDate[dKey];
+            delete salesByDate[dKey];
+            if(salesByDate[newD]){ salesByDate[newD].entries = salesByDate[newD].entries.concat(obj.entries||[]); salesByDate[newD].store = salesByDate[newD].store || obj.store; }
+            else salesByDate[newD] = obj;
+            saveData(); renderAll();
+        });
+        storeInp.addEventListener('change',()=>{ salesByDate[dKey].store = storeInp.value.toUpperCase(); salesByDate[dKey].updatedAt=Date.now(); saveData(); });
+        card.querySelectorAll('[data-toggle]').forEach(pill=>{
+            pill.addEventListener('click',()=>{
+                if(pill.dataset.toggle==='report'){ salesByDate[dKey].reportSent = !salesByDate[dKey].reportSent; }
+                else { salesByDate[dKey].paymentReceived = !salesByDate[dKey].paymentReceived; }
+                salesByDate[dKey].updatedAt=Date.now();
+                saveData(); renderLedger();
+            });
+        });
+        card.querySelector('[data-export]')?.addEventListener('click',()=>{ activeDateKey=dKey; rangeSelect.value='single'; rangeExportModal.classList.add('active'); });
+        card.querySelectorAll('.ledger-row').forEach(row=>{
+            const eid = row.dataset.id;
+            const entry = salesByDate[dKey].entries.find(e=>e.id===eid);
+            if(!entry) return;
+            row.querySelector('[data-field="qty"]').addEventListener('change',(ev)=>{
+                const v = Math.max(1, parseInt(ev.target.value,10)||1);
+                if(v===entry.qty) return;
+                checkpoint('QTY UPDATED'); entry.qty=v; salesByDate[dKey].updatedAt=Date.now(); saveData();
+                // update total in row immediately
+                row.querySelector('.lr-total').textContent = (entry.price*entry.qty).toFixed(2);
+                renderLedgerSummaryOnly();
+            });
+            row.querySelector('[data-field="price"]').addEventListener('change',(ev)=>{
+                const v = Math.max(0, parseFloat(ev.target.value)||0);
+                if(v===entry.price) return;
+                checkpoint('PRICE UPDATED'); entry.price=v; salesByDate[dKey].updatedAt=Date.now(); saveData();
+                row.querySelector('.lr-total').textContent = (entry.price*entry.qty).toFixed(2);
+                renderLedgerSummaryOnly();
+            });
+            row.querySelector('[data-field="loc"]').addEventListener('change',(ev)=>{
+                const v = ev.target.value.toUpperCase();
+                if(v===entry.loc) return;
+                checkpoint('PLACE UPDATED'); entry.loc=v; salesByDate[dKey].updatedAt=Date.now(); saveData();
+            });
+            row.querySelector('[data-del]').addEventListener('click',()=>{
+                checkpoint('ROW DELETED');
+                const i = salesByDate[dKey].entries.findIndex(e=>e.id===eid);
+                if(i>-1) salesByDate[dKey].entries.splice(i,1);
+                salesByDate[dKey].updatedAt=Date.now();
+                saveData(); renderLedger();
+            });
+        });
+    });
+    renderReconciliation();
+}
+function renderLedgerSummaryOnly(){
+    let gt=0,gc=0,gp=0;
+    Object.keys(salesByDate).forEach(dKey=>{
+        const obj = salesByDate[dKey];
+        if(!obj.entries||!obj.entries.length) return;
+        const {total,commission}=calcDateTotals(dKey);
+        gt+=total; gc+=commission;
+        if(obj.reportSent && !obj.paymentReceived) gp+=total;
+    });
+    $('ledgerGrandTotal').textContent = gt.toFixed(2);
+    $('ledgerGrandComm').textContent = gc.toFixed(2);
+    $('ledgerPending').textContent = gp.toFixed(2);
+}
+
+function renderReconciliation(){
+    let sent=0, received=0, pending=0, sentDates=0, paidDates=0;
+    Object.keys(salesByDate).forEach(dKey=>{
+        const obj=salesByDate[dKey]; if(!obj.entries||!obj.entries.length) return;
+        const {total}=calcDateTotals(dKey);
+        if(obj.reportSent){ sent+=total; sentDates++; }
+        if(obj.paymentReceived){ received+=total; paidDates++; }
+        if(obj.reportSent && !obj.paymentReceived) pending+=total;
+    });
+    $('reconciliationBox').innerHTML = `
+        <div>📤 Reports sent: <strong>AED ${sent.toFixed(2)}</strong> (${sentDates} dates)</div>
+        <div>💰 Payments received: <strong style="color:var(--green);">AED ${received.toFixed(2)}</strong> (${paidDates} dates)</div>
+        <div>⏳ Pending balance: <strong style="color:var(--amber);">AED ${pending.toFixed(2)}</strong></div>
+    `;
+}
+
+// NEW DATE
+$('newDateBtn').addEventListener('click',()=>{
+    const d = prompt('Enter date (YYYY-MM-DD):', todayKey());
+    if(!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+    if(salesByDate[d] && salesByDate[d].entries && salesByDate[d].entries.length){ showToast('DATE ALREADY EXISTS'); return; }
+    checkpoint('NEW DATE CREATED');
+    if(!salesByDate[d]) salesByDate[d] = {entries:[], sent:false, reportSent:false, paymentReceived:false, store:''};
+    saveData(); renderAll();
+    showToast('NEW DATE '+formatDateDisplay(d)+' CREATED');
+});
+
+$('ledgerSearch').addEventListener('input',e=>{ ledgerQuery=e.target.value; renderLedger(); });
+$('ledgerExportAllBtn').addEventListener('click',()=>{ activeDateKey=todayKey(); rangeSelect.value='all'; rangeExportModal.classList.add('active'); });
+$('ledgerWhatsAppBtn').addEventListener('click',()=>{ rangeSelect.value='all'; rangeExportModal.classList.add('active'); });
+
+// SETTINGS
+function renderSettings(){
+    if(!products.length){ settingsListEl.innerHTML='<div class="empty-msg">NO MEDICINES.</div>'; return; }
+    const q=($('settingsSearch').value||'').trim().toLowerCase();
+    settingsListEl.innerHTML = products.map((p,i)=>i).filter(i=>!q||(products[i].name+' '+(products[i].brand||'')).toLowerCase().includes(q)).sort((a,b)=>products[a].name.localeCompare(products[b].name)).map(idx=>{
+        const p=products[idx];
+        const thumb=p.img?`<img src="${p.img}" alt="">`:`<span>${getInitials(p.name)}</span>`;
+        return `<div class="setting-row" data-idx="${idx}">
+            <button type="button" class="setting-img-btn">${thumb}<span class="edit-lbl">EDIT</span></button>
+            <input type="text" class="inp-name" value="${escapeHtml(p.name)}">
+            <input type="number" class="inp-price" value="${p.price}" step="0.5" min="0">
+            <label class="chk-label"><input type="checkbox" class="inp-promo" ${p.promo?'checked':''}> PROMO</label>
+            <button class="btn btn-sm btn-danger del-prod-btn">✕</button>
+        </div>`;
+    }).join('');
+    settingsListEl.querySelectorAll('.setting-row').forEach(row=>{
+        const idx=parseInt(row.dataset.idx,10);
+        row.querySelector('.setting-img-btn').addEventListener('click',()=>{ imgUploadTargetIdx=idx; productImageInput.value=''; productImageInput.click(); });
+        row.querySelector('.inp-name').addEventListener('change',(e)=>{ const nn=(e.target.value.trim()||'MEDICINE').toUpperCase(); renameAll(products[idx].id,nn); products[idx].name=nn; saveData(); renderAll(); });
+        row.querySelector('.inp-price').addEventListener('change',(e)=>{ products[idx].price=Math.max(0,parseFloat(e.target.value)||0); saveData(); renderAll(); });
+        row.querySelector('.inp-promo').addEventListener('change',(e)=>{ products[idx].promo=e.target.checked; saveData(); renderAll(); });
+        row.querySelector('.del-prod-btn').addEventListener('click',()=>{ if(confirm('DELETE "'+products[idx].name+'"?')){ products.splice(idx,1); saveData(); renderAll(); } });
+    });
+}
+$('settingsSearch').addEventListener('input',renderSettings);
+
+addNewProdSubmitBtn.addEventListener('click',()=>{
+    const brand=(newProdBrandInput.value.trim()||'GENERAL').toUpperCase();
+    const name=newProdNameInput.value.trim().toUpperCase();
+    const price=parseFloat(newProdPriceInput.value);
+    const promo=newProdPromoChk.checked;
+    if(!name){ showToast('ENTER MEDICINE NAME'); return; }
+    if(isNaN(price)||price<0){ showToast('INVALID PRICE'); return; }
+    products.push({id:uid(),brand,name,price,promo,img:''});
+    saveData(); renderAll();
+    newProdBrandInput.value=''; newProdNameInput.value=''; newProdPriceInput.value=''; newProdPromoChk.checked=false;
+    showToast('ADDED '+name);
+});
+
+productImageInput.addEventListener('change',(e)=>{
+    const file=e.target.files&&e.target.files[0]; if(!file||imgUploadTargetIdx===null) return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{ const img=new Image(); img.onload=()=>{ const c=document.createElement('canvas'); c.width=200; c.height=200; const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,200,200); const m=Math.min(img.width,img.height); ctx.drawImage(img,(img.width-m)/2,(img.height-m)/2,m,m,0,0,200,200); products[imgUploadTargetIdx].img=c.toDataURL('image/jpeg',0.78); saveData(); renderAll(); showToast('PHOTO UPDATED'); }; img.src=ev.target.result; };
+    reader.readAsDataURL(file);
+});
+
+// global commission
+globalCommissionInput.addEventListener('change',()=>{ globalCommission=Math.min(100,Math.max(0,parseFloat(globalCommissionInput.value)||0)); globalCommissionInput.value=globalCommission; saveData(); renderAll(); });
+
+// date nav
+activeDatePicker.addEventListener('change',()=>{ if(activeDatePicker.value){ activeDateKey=activeDatePicker.value; renderAll(); } });
+$('prevDayBtn').addEventListener('click',()=>{ activeDateKey=shiftDateKey(activeDateKey,-1); renderAll(); });
+$('nextDayBtn').addEventListener('click',()=>{ activeDateKey=shiftDateKey(activeDateKey,1); renderAll(); });
+jumpTodayBtn.addEventListener('click',()=>{ activeDateKey=todayKey(); renderAll(); });
+
+// tabs
+document.querySelectorAll('.nav-tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+        document.querySelectorAll('.nav-tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+        if(btn.dataset.tab==='ledger') renderLedger();
+        window.scrollTo({top:0,behavior:'smooth'});
+    });
+});
+
+searchInput.addEventListener('input',()=>{ searchQuery=searchInput.value; renderProducts(); });
+promoFilterBtn.addEventListener('click',()=>{ promoOnly=!promoOnly; promoFilterBtn.classList.toggle('on',promoOnly); renderProducts(); });
+$('clearDayBtn').addEventListener('click',()=>{ if(confirm('CLEAR ALL ENTRIES FOR '+formatDateDisplay(activeDateKey)+'?')){ checkpoint('DATE CLEARED'); salesByDate[activeDateKey]={entries:[],sent:false,reportSent:false,paymentReceived:false,store:''}; saveData(); renderAll(); } });
+
+$('exportBtn').addEventListener('click',()=>{ activeDateKey=activeDateKey; rangeSelect.value='single'; rangeExportModal.classList.add('active'); });
+$('exportCsvBtn').addEventListener('click',()=>{ rangeSelect.value='single'; rangeExportModal.classList.add('active'); });
+
+// backup
+$('exportBackupBtn').addEventListener('click',()=>{
+    const blob=new Blob([JSON.stringify({products,salesByDate,lastSent,globalCommission},null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='VYSAKH-BACKUP-'+todayKey()+'.json'; a.click(); URL.revokeObjectURL(url);
+});
+$('importBackupBtn').addEventListener('click',()=>{ importFileInput.value=''; importFileInput.click(); });
+importFileInput.addEventListener('change',(e)=>{
+    const file=e.target.files&&e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=(ev)=>{ try { const d=JSON.parse(ev.target.result); products=d.products||DEFAULT_PRODUCTS; salesByDate=d.salesByDate||{}; lastSent=d.lastSent||null; globalCommission=d.globalCommission??10; saveData(); renderAll(); showToast('BACKUP RESTORED'); } catch(err){ showToast('INVALID BACKUP'); } };
+    reader.readAsText(file);
+});
+$('resetAllBtn').addEventListener('click',()=>{ if(confirm('DELETE ALL DATA AND RESET?')){ localStorage.removeItem(STORAGE_KEY); loadData(); renderAll(); showToast('RESET COMPLETE'); } });
+
+// RENDER ALL
+function renderAll(){
+    renderDateHeader();
+    renderDashboardTiles();
+    renderBrandChips();
+    renderProducts();
+    renderTodayTable();
+    renderSummary();
+    renderLedger();
+    renderSettings();
+    renderPromoCount();
+    globalCommissionInput.value = globalCommission;
+    updateUndoButtons();
+}
+function renderDateHeader(){
+    activeDatePicker.value = activeDateKey;
+    const isToday = activeDateKey===todayKey();
+    jumpTodayBtn.classList.toggle('show',!isToday);
+    salesCardTitle.textContent = isToday ? 'SALES FOR TODAY' : 'SALES FOR '+formatDateDisplay(activeDateKey);
+}
+function renderPromoCount(){ const n=products.filter(p=>p.promo).length; promoCountEl.textContent=n+' PROMO ITEM'+(n!==1?'S':'')+' · '+products.length+' TOTAL'; }
+function renderSummary(){
+    const {total,commission}=calcDateTotals(activeDateKey);
+    todayTotalEl.textContent=total.toFixed(2);
+    todayCommissionEl.textContent=commission.toFixed(2);
+    commissionPctBadge.textContent=globalCommission+'%';
+}
+
+// init
+loadData();
+renderAll();
+loadFirebaseConfig();
+</script>
+</body>
+</html>
